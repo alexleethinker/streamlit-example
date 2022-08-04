@@ -1,7 +1,3 @@
-from collections import namedtuple
-import altair as alt
-import math
-import pandas as pd
 import streamlit as st
 
 """
@@ -14,25 +10,46 @@ forums](https://discuss.streamlit.io).
 
 In the meantime, below is an example of what you can do with just a few lines of code:
 """
+import wencai as wc
+from wencai.core.session import Session
+
+Session.headers.update({'Host':'www.iwencai.com'})
+wc.set_variable(cn_col=True)
+
+import warnings
+warnings.filterwarnings('ignore')
 
 
-with st.echo(code_location='below'):
-    total_points = st.slider("Number of points in spiral", 1, 5000, 2000)
-    num_turns = st.slider("Number of turns in spiral", 1, 100, 9)
+concepts = wc.search( query = "概念 主营").fillna('')
 
-    Point = namedtuple('Point', 'x y')
-    data = []
+import pandas as pd
+concepts_list = pd.read_csv('./Concepts_List.csv',encoding="gbk")
+industry_concepts_list = concepts_list.loc[concepts_list['分类'].isin(['行业'])]['概念名称'].values.tolist()
+events_concepts_list = concepts_list.loc[concepts_list['分类'].isin(['事件','知名企业','农村','改革','军工','国企体系'])]['概念名称'].values.tolist()
+trading_concepts_list = concepts_list.loc[concepts_list['分类'].isin(['交易'])]['概念名称'].values.tolist() # 区域missing
 
-    points_per_turn = total_points / num_turns
 
-    for curr_point_num in range(total_points):
-        curr_turn, i = divmod(curr_point_num, points_per_turn)
-        angle = (curr_turn + 1) * 2 * math.pi * i / points_per_turn
-        radius = curr_point_num / total_points
-        x = radius * math.cos(angle)
-        y = radius * math.sin(angle)
-        data.append(Point(x, y))
+concepts['行业概念'] = ''
+concepts['事件概念'] = ''
+concepts['交易概念'] = ''
 
-    st.altair_chart(alt.Chart(pd.DataFrame(data), height=500, width=500)
-        .mark_circle(color='#0068c9', opacity=0.5)
-        .encode(x='x:Q', y='y:Q'))
+concept_list = []
+
+for row, l in concepts.iterrows():
+    concepts['行业概念'][row] = ','.join(set(l['所属概念'].replace('概念','').split(';')).intersection(industry_concepts_list))
+    concepts['事件概念'][row] = ','.join(set(l['所属概念'].replace('概念','').split(';')).intersection(events_concepts_list))
+    concepts['交易概念'][row] = ','.join(set(l['所属概念'].replace('概念','').split(';')).intersection(trading_concepts_list))
+    concept_list = concept_list + l['所属概念'].replace('概念','').split(';')
+
+concepts['a股市值(不含限售股)'] = pd.to_numeric(concepts['a股市值(不含限售股)'])/100000000
+
+code = concepts.pop('股票代码')
+name = concepts.pop('股票简称')
+
+concepts = concepts.drop(columns=['公司网站','经营范围','所属概念','主营产品名称','所属概念数量']).round(2).\
+            rename(columns = {'a股市值(不含限售股)':'流通市值'})
+concepts.insert(0,'股票简称',name)
+concepts.insert(0,'股票代码',code)
+
+
+st.dataframe(concepts)
