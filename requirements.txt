@@ -5,3 +5,4 @@ wencai
 requests
 beautifulsoup4
 PyExecJS
+nodejs
