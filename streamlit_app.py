@@ -12,6 +12,6 @@ In the meantime, below is an example of what you can do with just a few lines of
 """
 
 import pandas as pd
-concepts = pd.read_csv('./gainian.csv',encoding="gbk")
+concepts = pd.read_csv('./gainian.csv',encoding="gbk").round(2)
 
 st.dataframe(concepts)
